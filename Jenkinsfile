@@ -30,7 +30,7 @@ pipeline {
             steps {
                 script {
                     // Check if the named container is running
-                    def containerId = sh(script: "docker ps -qf 'user2container'", returnStdout: true).trim()
+                    def containerId = sh(script: "docker ps -qf 'name=user2container'", returnStdout: true).trim()
 
                     if (containerId) {
                         echo "Container is running with ID: ${containerId}"
