@@ -58,7 +58,7 @@ pipeline {
 
                     // SSH into the remote server and execute the commands
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "${remoteCommands}"
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'bash -s' <<< "${remoteCommands}"
                     """
                 }
             }
