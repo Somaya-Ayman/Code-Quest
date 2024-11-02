@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     // Define remote host and container name
-                    def remoteHost = '-i host_key.pem somaya@102.37.146.184' // Replace with your remote server's user and IP
+                    def remoteHost = '-i /~/host_key.pem somaya@102.37.146.184' // Replace with your remote server's user and IP
                     def containerName = 'user1container'
 
                     // Step 1: Check if the named container is running
