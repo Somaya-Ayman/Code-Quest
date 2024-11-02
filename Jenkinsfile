@@ -47,8 +47,8 @@ pipeline {
                         // Step 2: Remove current files inside NGINX's HTML directory
                         sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"rm -rf ${nginxPath}/*\"'"
 
-                        // Step 3: Copy new files from the cloned directory to the container
-                        sh "scp -i ~/host_key.pem -r ${CLONE_DIR}/. ${remoteHost}:${nginxPath}"
+                        // Step 3: Copy new files from the cloned directory to the container using docker cp
+                        sh "ssh -i ~/host_key.pem ${remoteHost} 'docker cp ${CLONE_DIR}/. ${containerId}:${nginxPath}'"
 
                         // Step 4: Verify the new files are in place
                         sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"ls -al ${nginxPath}\"'"
