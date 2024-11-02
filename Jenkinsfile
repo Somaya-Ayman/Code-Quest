@@ -15,8 +15,15 @@ pipeline {
                     // Ensure the SSH key has the correct permissions
                     sh "chmod 600 ${HOST_KEY_PATH}"
 
-                    // Clone the repository on the remote host
-                    sh "ssh -i ${HOST_KEY_PATH} ${REMOTE_HOST} 'mkdir -p ${CLONE_DIR} && git clone ${REPO_URL} ${CLONE_DIR}'"
+                    // Remove existing directory if it exists and clone the repository on the remote host
+                    sh """
+                        ssh -i ${HOST_KEY_PATH} ${REMOTE_HOST} '
+                        if [ -d "${CLONE_DIR}" ]; then
+                            rm -rf ${CLONE_DIR}
+                        fi
+                        mkdir -p ${CLONE_DIR} && git clone ${REPO_URL} ${CLONE_DIR}
+                        '
+                    """
                 }
             }
         }
