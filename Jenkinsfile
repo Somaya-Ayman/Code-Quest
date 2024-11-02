@@ -31,34 +31,31 @@ pipeline {
         stage('Access Remote Server and Modify Docker Container') {
             steps {
                 script {
-                    // Define commands to be executed on the remote server
-                    def remoteCommands = """
+                    // Direct SSH command execution
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
                     #!/bin/bash
                     # Check if the named container is running
-                    containerId=\$(docker ps -qf 'name=user1container')
+                    containerId=\$(docker ps -qf "name=user1container")
                     if [ -z "\$containerId" ]; then
-                        echo "No container found with the name 'user1container'"
+                        echo "No container found with the name user1container"
                         exit 1
                     fi
 
                     echo "Container is running with ID: \$containerId"
-                    
+
                     # Path inside the container where NGINX serves files
                     nginxPath="/usr/share/nginx/html"
 
                     # Step 1: Remove current files inside NGINX's HTML directory
-                    docker exec \$containerId sh -c 'rm -rf \$nginxPath/*'
+                    docker exec \$containerId sh -c "rm -rf \$nginxPath/*"
 
                     # Step 2: Copy new files from the cloned directory to the container
                     docker cp '${CLONE_DIR}/.' \$containerId:\$nginxPath
 
                     # Step 3: Verify the new files are in place
-                    docker exec \$containerId sh -c 'ls -al \$nginxPath'
-                    """
-
-                    // SSH into the remote server and execute the commands
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'bash -s' <<< "${remoteCommands}"
+                    docker exec \$containerId sh -c "ls -al \$nginxPath"
+                    "
                     """
                 }
             }
