@@ -43,13 +43,14 @@ pipeline {
 
                         // Path inside the container where NGINX serves files
                         def nginxPath = "/usr/share/nginx/html"
-
+                        def homePath = "/~/clonedfiles"
                         // Step 2: Remove current files inside NGINX's HTML directory
                         sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"rm -rf ${nginxPath}/*\"'"
 
                         // Step 3: Copy new files from the cloned directory to the remote host
                         // Use scp to copy files to the remote server first
-                        sh "scp -i ~/host_key.pem -r ${CLONE_DIR}/. ${remoteHost}:${nginxPath}"
+                        sh "scp -i ~/host_key.pem -r ${CLONE_DIR}/. ${remoteHost}:${homePath}"
+                        sh "ssh -i ~/host_key.pem ${remoteHost} 'docker cp ${homePath}/. ${containerId}:${nginxPath}'"
 
                         // Step 4: Verify the new files are in place
                         sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"ls -al ${nginxPath}\"'"
