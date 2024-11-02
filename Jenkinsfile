@@ -29,11 +29,14 @@ pipeline {
             steps {
                 script {
                     // Define remote host and container name
-                    def remoteHost = '-i /~/host_key.pem somaya@102.37.146.184' // Replace with your remote server's user and IP
+                    def remoteHost = 'somaya@102.37.146.184' // Replace with your remote server's user and IP
                     def containerName = 'user1container'
+                    
+                    // Ensure the SSH key has the correct permissions
+                    sh "chmod 600 ~/host_key.pem"
 
                     // Step 1: Check if the named container is running
-                    def containerId = sh(script: "ssh ${remoteHost} 'docker ps -qf \"name=${containerName}\"'", returnStdout: true).trim()
+                    def containerId = sh(script: "ssh -i ~/host_key.pem ${remoteHost} 'docker ps -qf \"name=${containerName}\"'", returnStdout: true).trim()
 
                     if (containerId) {
                         echo "Container is running with ID: ${containerId}"
@@ -42,13 +45,13 @@ pipeline {
                         def nginxPath = "/usr/share/nginx/html"
 
                         // Step 2: Remove current files inside NGINX's HTML directory
-                        sh "ssh ${remoteHost} 'docker exec ${containerId} sh -c \"rm -rf ${nginxPath}/*\"'"
+                        sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"rm -rf ${nginxPath}/*\"'"
 
                         // Step 3: Copy new files from the cloned directory to the container
-                        sh "scp -r ${CLONE_DIR}/. ${remoteHost}:${nginxPath}"
+                        sh "scp -i ~/host_key.pem -r ${CLONE_DIR}/. ${remoteHost}:${nginxPath}"
 
                         // Step 4: Verify the new files are in place
-                        sh "ssh ${remoteHost} 'docker exec ${containerId} sh -c \"ls -al ${nginxPath}\"'"
+                        sh "ssh -i ~/host_key.pem ${remoteHost} 'docker exec ${containerId} sh -c \"ls -al ${nginxPath}\"'"
                     } else {
                         error "No container found with the name '${containerName}'"
                     }
