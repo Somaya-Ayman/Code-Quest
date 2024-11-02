@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         CLONE_DIR = "${WORKSPACE}/cloned_files"
-        REMOTE_USER = 'somaya' // Update with your remote server username
-        REMOTE_HOST = '102.37.146.184' // Update with your remote server IP address
+        REMOTE_USER = 'somaya'
+        REMOTE_HOST = '102.37.146.184'
+        SSH_KEY_PATH = '/~/host_key.pem' // Update this to your private key path
     }
 
     stages {
@@ -31,9 +32,8 @@ pipeline {
         stage('Access Remote Server and Modify Docker Container') {
             steps {
                 script {
-                    // Direct SSH command execution
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                    // Define commands to be executed on the remote server
+                    def remoteCommands = """
                     #!/bin/bash
                     # Check if the named container is running
                     containerId=\$(docker ps -qf "name=user1container")
@@ -48,14 +48,18 @@ pipeline {
                     nginxPath="/usr/share/nginx/html"
 
                     # Step 1: Remove current files inside NGINX's HTML directory
-                    docker exec \$containerId sh -c "rm -rf \$nginxPath/*"
+                    docker exec \$containerId sh -c 'rm -rf \$nginxPath/*'
 
                     # Step 2: Copy new files from the cloned directory to the container
                     docker cp '${CLONE_DIR}/.' \$containerId:\$nginxPath
 
                     # Step 3: Verify the new files are in place
-                    docker exec \$containerId sh -c "ls -al \$nginxPath"
-                    "
+                    docker exec \$containerId sh -c 'ls -al \$nginxPath'
+                    """
+
+                    // SSH into the remote server and execute the commands using specified key
+                    sh """
+                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "${remoteCommands}"
                     """
                 }
             }
