@@ -21,7 +21,7 @@ pipeline {
                         if [ -d "${CLONE_DIR}" ]; then
                             rm -rf ${CLONE_DIR}
                         fi
-                        mkdir -p ${CLONE_DIR} && git clone url ${CLONE_DIR}
+                        mkdir -p ${CLONE_DIR} && git clone ${url} ${CLONE_DIR}
                         '
                     """
                 }
