@@ -30,7 +30,7 @@ pipeline {
             steps {
                 script {
                     // Check if the named container is running
-                    def containerId = sh(script: "docker ps -qf 'name=user1container'", returnStdout: true).trim()
+                    def containerId = sh(script: "docker ps -qf 'name=user2container'", returnStdout: true).trim()
 
                     if (containerId) {
                         echo "Container is running with ID: ${containerId}"
@@ -48,7 +48,7 @@ pipeline {
                         sh "docker exec ${containerId} sh -c 'ls -al ${nginxPath}'"
 
                     } else {
-                        error "No container found with the name 'user1container'"
+                        error "No container found with the name 'user2container'"
                     }
                 }
             }
