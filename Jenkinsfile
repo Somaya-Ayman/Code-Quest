@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         CLONE_DIR = "${WORKSPACE}/cloned_files"
+        REMOTE_USER = 'somaya' // Update with your remote server username
+        REMOTE_HOST = '102.37.146.184' // Update with your remote server IP address
     }
 
     stages {
@@ -26,30 +28,38 @@ pipeline {
             }
         }
         
-        stage('Access and Modify Running Docker Container') {
+        stage('Access Remote Server and Modify Docker Container') {
             steps {
                 script {
-                    // Check if the named container is running
-                    def containerId = sh(script: "docker ps -qf 'name=user1container'", returnStdout: true).trim()
+                    // Define commands to be executed on the remote server
+                    def remoteCommands = """
+                    #!/bin/bash
+                    # Check if the named container is running
+                    containerId=\$(docker ps -qf 'name=user1container')
+                    if [ -z "\$containerId" ]; then
+                        echo "No container found with the name 'user1container'"
+                        exit 1
+                    fi
 
-                    if (containerId) {
-                        echo "Container is running with ID: ${containerId}"
-                        
-                        // Path inside the container where NGINX serves files
-                        def nginxPath = "/usr/share/nginx/html"
+                    echo "Container is running with ID: \$containerId"
+                    
+                    # Path inside the container where NGINX serves files
+                    nginxPath="/usr/share/nginx/html"
 
-                        // Step 1: Remove current files inside NGINX's HTML directory
-                        sh "docker exec ${containerId} sh -c 'rm -rf ${nginxPath}/*'"
+                    # Step 1: Remove current files inside NGINX's HTML directory
+                    docker exec \$containerId sh -c 'rm -rf \$nginxPath/*'
 
-                        // Step 2: Copy new files from the cloned directory to the container
-                        sh "docker cp '${CLONE_DIR}/.' ${containerId}:${nginxPath}"
+                    # Step 2: Copy new files from the cloned directory to the container
+                    docker cp '${CLONE_DIR}/.' \$containerId:\$nginxPath
 
-                        // Step 3: Verify the new files are in place
-                        sh "docker exec ${containerId} sh -c 'ls -al ${nginxPath}'"
+                    # Step 3: Verify the new files are in place
+                    docker exec \$containerId sh -c 'ls -al \$nginxPath'
+                    """
 
-                    } else {
-                        error "No container found with the name 'user1container'"
-                    }
+                    // SSH into the remote server and execute the commands
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "${remoteCommands}"
+                    """
                 }
             }
         }
