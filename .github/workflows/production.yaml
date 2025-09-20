@@ -38,17 +38,21 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          frontend/package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
       run: |
         if [ -f package.json ]; then
-          npm ci
+          npm install
         fi
         if [ -f frontend/package.json ]; then
-          cd frontend && npm ci && cd ..
+          cd frontend && npm install && cd ..
         fi
         if [ -f backend/package.json ]; then
-          cd backend && npm ci && cd ..
+          cd backend && npm install && cd ..
         fi
 
     - name: Run comprehensive tests
@@ -271,6 +275,9 @@ jobs:
     name: Production Security Scan
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      security-events: write
+      contents: read
     
     steps:
     - name: Checkout code
@@ -285,7 +292,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
