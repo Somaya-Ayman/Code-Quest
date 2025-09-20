@@ -21,9 +21,16 @@ spec:
         fsGroup: 1000
       containers:
       - name: frontend
-        image: docker.io/somaya189ayman/code-quest:frontend-develop-latest
+        image: docker.io/somaya189ayman/code-quest:frontend-develop
         ports:
         - containerPort: 80
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
         resources:
           requests:
             memory: "64Mi"
