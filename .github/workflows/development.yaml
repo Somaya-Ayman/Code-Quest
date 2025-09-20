@@ -19,7 +19,7 @@ on:
 
 env:
   NODE_VERSION: '18'
-  REGISTRY: ghcr.io
+  REGISTRY: docker.io
 
 jobs:
   # =============================================================================
