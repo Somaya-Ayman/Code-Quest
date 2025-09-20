@@ -18,7 +18,7 @@ on:
 env:
   NODE_VERSION: '18'
   REGISTRY: ghcr.io
-  IMAGE_NAME: somaya-ayman/code-quest
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # =============================================================================
@@ -101,13 +101,20 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set lowercase repository name
+      id: repo-name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "Repository name: $REPO_NAME"
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend
         tags: |
           type=ref,event=branch
           type=sha,prefix=prod-
@@ -122,9 +129,9 @@ jobs:
         file: ./frontend/Dockerfile
         push: true
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:prod-${{ github.sha }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:stable
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend:prod-${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend:latest
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend:stable
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -138,9 +145,9 @@ jobs:
         file: ./backend/Dockerfile
         push: true
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:prod-${{ github.sha }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:stable
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend:prod-${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend:latest
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend:stable
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max

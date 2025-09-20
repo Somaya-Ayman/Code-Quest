@@ -20,7 +20,7 @@ on:
 env:
   NODE_VERSION: '18'
   REGISTRY: ghcr.io
-  IMAGE_NAME: somaya-ayman/code-quest
+  IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
 
 jobs:
   # =============================================================================
@@ -103,13 +103,20 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set lowercase repository name
+      id: repo-name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "Repository name: $REPO_NAME"
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend
+          ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -123,7 +130,7 @@ jobs:
         context: ./frontend
         file: ./frontend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-frontend:${{ github.ref_name }}-${{ github.sha }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -135,7 +142,7 @@ jobs:
         context: ./backend
         file: ./backend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/${{ steps.repo-name.outputs.repo-name }}-backend:${{ github.ref_name }}-${{ github.sha }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
