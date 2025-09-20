@@ -1,0 +1,335 @@
+# =============================================================================
+# Code Quest Infrastructure - Docker Compose for Terraform
+# =============================================================================
+
+services:
+  # =============================================================================
+  # Terraform Service
+  # =============================================================================
+  terraform:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-terraform
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro  # Mount AWS credentials
+      - terraform-cache:/root/.terraform.d  # Cache for modules and providers
+    environment:
+      - TF_VAR_environment=${ENVIRONMENT:-dev}
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '🚀 Starting Terraform infrastructure deployment...' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo 'Action: ${TERRAFORM_ACTION:-plan}' &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
+      terraform ${TERRAFORM_ACTION:-plan} -var-file='environments/${ENVIRONMENT:-dev}.tfvars' ${TERRAFORM_ARGS}
+    profiles:
+      - terraform
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Terraform Plan Service (Dry Run)
+  # =============================================================================
+  terraform-plan:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-terraform-plan
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=${ENVIRONMENT:-dev}
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh"]
+    command: |
+      -c "
+      echo '📋 Planning Terraform infrastructure changes...' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo '' &&
+      terraform init &&
+      terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
+      terraform plan -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -out=tfplan
+      "
+    profiles:
+      - plan
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Terraform Apply Service
+  # =============================================================================
+  terraform-apply:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-terraform-apply
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=${ENVIRONMENT:-dev}
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '🚀 Applying Terraform infrastructure changes...' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
+      terraform apply -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -auto-approve &&
+      echo '' &&
+      echo '✅ Infrastructure deployed successfully!' &&
+      echo '' &&
+      echo '📊 Infrastructure Summary:' &&
+      terraform output -json | jq -r '
+        "Cluster ID: " + .cluster_id.value,
+        "Cluster Endpoint: " + .cluster_endpoint.value,
+        "VPC ID: " + .vpc_id.value,
+        "Database Endpoint: " + .rds_endpoint.value,
+        "Application URL: " + .application_url.value,
+        "Kubectl Command: " + .kubectl_config.value
+      ' 2>/dev/null || echo 'Run "terraform output" to see all outputs'
+    profiles:
+      - apply
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Terraform Destroy Service
+  # =============================================================================
+  terraform-destroy:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-terraform-destroy
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=${ENVIRONMENT:-dev}
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '⚠️  DESTROYING Terraform infrastructure...' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo '' &&
+      echo 'This will destroy ALL infrastructure in the ${ENVIRONMENT:-dev} environment!' &&
+      echo 'Press Ctrl+C within 10 seconds to cancel...' &&
+      sleep 10 &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || echo 'Workspace not found' &&
+      terraform destroy -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -auto-approve &&
+      echo '' &&
+      echo '🗑️  Infrastructure destroyed successfully!'
+    profiles:
+      - destroy
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # AWS CLI Service (for debugging and manual operations)
+  # =============================================================================
+  aws-cli:
+    image: amazon/aws-cli:2.13.0
+    container_name: code-quest-aws-cli
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '🔧 AWS CLI Container Ready' &&
+      echo 'Available commands:' &&
+      echo '  aws sts get-caller-identity' &&
+      echo '  aws eks list-clusters' &&
+      echo '  aws rds describe-db-instances' &&
+      echo '  aws ec2 describe-instances' &&
+      echo '' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo '' &&
+      bash
+    profiles:
+      - aws
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Kubectl Service (for Kubernetes operations)
+  # =============================================================================
+  kubectl:
+    image: bitnami/kubectl:1.28.0
+    container_name: code-quest-kubectl
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - ~/.kube:/root/.kube
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_REGION=${AWS_REGION:-us-west-2}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '☸️  Kubectl Container Ready' &&
+      echo 'Configuring kubectl for EKS cluster...' &&
+      aws eks update-kubeconfig --region ${AWS_REGION:-us-west-2} --name code-quest-${ENVIRONMENT:-dev} &&
+      echo '' &&
+      echo 'Available commands:' &&
+      echo '  kubectl get nodes' &&
+      echo '  kubectl get pods -A' &&
+      echo '  kubectl get services' &&
+      echo '  kubectl get ingress' &&
+      echo '' &&
+      echo 'Cluster: code-quest-${ENVIRONMENT:-dev}' &&
+      echo 'Region: ${AWS_REGION:-us-west-2}' &&
+      echo '' &&
+      bash
+    profiles:
+      - kubectl
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Terraform State Service (for state management)
+  # =============================================================================
+  terraform-state:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-terraform-state
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=${ENVIRONMENT:-dev}
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '📊 Terraform State Management' &&
+      echo 'Environment: ${ENVIRONMENT:-dev}' &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || echo 'Workspace not found' &&
+      echo '' &&
+      echo 'Available commands:' &&
+      echo '  terraform state list' &&
+      echo '  terraform state show <resource>' &&
+      echo '  terraform state rm <resource>' &&
+      echo '  terraform import <resource> <id>' &&
+      echo '  terraform output' &&
+      echo '' &&
+      bash
+    profiles:
+      - state
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Development Environment (All services)
+  # =============================================================================
+  dev-environment:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-dev
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=dev
+      - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '🛠️  Development Environment Setup' &&
+      echo 'Deploying development infrastructure...' &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select dev 2>/dev/null || terraform workspace new dev &&
+      terraform plan -var-file='environments/dev.tfvars' &&
+      echo '' &&
+      echo 'To apply changes, run:' &&
+      echo '  docker-compose run --rm terraform-apply ENVIRONMENT=dev' &&
+      echo '' &&
+      bash
+    profiles:
+      - dev
+    networks:
+      - infrastructure
+
+  # =============================================================================
+  # Production Environment (All services)
+  # =============================================================================
+  prod-environment:
+    image: hashicorp/terraform:1.6.0
+    container_name: code-quest-prod
+    working_dir: /workspace
+    volumes:
+      - ./terraform:/workspace
+      - ~/.aws:/root/.aws:ro
+      - terraform-cache:/root/.terraform.d
+    environment:
+      - TF_VAR_environment=prod
+      - TF_VAR_aws_region=${AWS_REGION:-us-east-1}
+      - TF_VAR_owner=${OWNER:-devops-team}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      echo '🏭 Production Environment Setup' &&
+      echo 'Deploying production infrastructure...' &&
+      echo '' &&
+      cd terraform &&
+      terraform init &&
+      terraform workspace select prod 2>/dev/null || terraform workspace new prod &&
+      terraform plan -var-file='environments/prod.tfvars' &&
+      echo '' &&
+      echo 'To apply changes, run:' &&
+      echo '  docker-compose run --rm terraform-apply ENVIRONMENT=prod' &&
+      echo '' &&
+      bash
+    profiles:
+      - prod
+    networks:
+      - infrastructure
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  terraform-cache:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  infrastructure:
+    driver: bridge
