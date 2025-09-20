@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: code-quest
   labels:
     app: frontend
 spec:
@@ -14,14 +15,15 @@ spec:
       labels:
         app: frontend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: frontend
-        image: somaya189ayman/code-quest:frontend-develop-latest
+        image: docker.io/somaya189ayman/code-quest:frontend-develop-latest
         ports:
         - containerPort: 80
-        env:
-        - name: NODE_ENV
-          value: "production"
         resources:
           requests:
             memory: "64Mi"

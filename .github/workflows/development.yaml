@@ -159,21 +159,20 @@ jobs:
 
     - name: Deploy to Kubernetes
       run: |
-        # Create namespace if it doesn't exist
-        kubectl create namespace code-quest --dry-run=client -o yaml | kubectl apply -f -
+        # Set image tags
+        FRONTEND_IMAGE="docker.io/somaya189ayman/code-quest:frontend-${{ github.ref_name }}-${{ github.sha }}"
+        BACKEND_IMAGE="docker.io/somaya189ayman/code-quest:backend-${{ github.ref_name }}-${{ github.sha }}"
         
-        # Deploy frontend
-        if [ -f frontend/k8s/deployment.yaml ]; then
-          kubectl apply -f frontend/k8s/ -n code-quest
+        # Deploy all Kubernetes manifests
+        if [ -d k8s ]; then
+          # Update image tags in deployment files
+          sed -i "s|image:.*frontend.*|image: $FRONTEND_IMAGE|g" k8s/frontend-deployment.yaml
+          sed -i "s|image:.*backend.*|image: $BACKEND_IMAGE|g" k8s/backend-deployment.yaml
+          
+          # Apply all manifests
+          kubectl apply -f k8s/
         else
-          echo "No Kubernetes manifests found for frontend"
-        fi
-        
-        # Deploy backend
-        if [ -f backend/k8s/deployment.yaml ]; then
-          kubectl apply -f backend/k8s/ -n code-quest
-        else
-          echo "No Kubernetes manifests found for backend"
+          echo "No Kubernetes manifests found in k8s directory"
         fi
 
     - name: Wait for deployment

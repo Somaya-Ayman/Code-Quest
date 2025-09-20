@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: code-quest
   labels:
     app: backend
 spec:
@@ -14,9 +15,13 @@ spec:
       labels:
         app: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: backend
-        image: somaya189ayman/code-quest:backend-develop-latest
+        image: docker.io/somaya189ayman/code-quest:backend-develop-latest
         ports:
         - containerPort: 3000
         env:
