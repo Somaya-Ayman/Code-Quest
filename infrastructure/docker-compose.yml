@@ -7,7 +7,7 @@ services:
   # Terraform Service
   # =============================================================================
   terraform:
-    image: hashicorp/terraform:1.6.0
+    image: hashicorp/terraform:1.13
     container_name: code-quest-terraform
     working_dir: /workspace
     volumes:
@@ -39,7 +39,7 @@ services:
   # Terraform Plan Service (Dry Run)
   # =============================================================================
   terraform-plan:
-    image: hashicorp/terraform:1.6.0
+    image: hashicorp/terraform:1.13
     container_name: code-quest-terraform-plan
     working_dir: /workspace
     volumes:
@@ -51,8 +51,9 @@ services:
       - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
       - TF_VAR_owner=${OWNER:-devops-team}
       - AWS_PROFILE=${AWS_PROFILE:-default}
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/bin/sh"]
     command: |
+      -c "
       echo '📋 Planning Terraform infrastructure changes...' &&
       echo 'Environment: ${ENVIRONMENT:-dev}' &&
       echo 'Region: ${AWS_REGION:-us-west-2}' &&
@@ -60,6 +61,7 @@ services:
       terraform init &&
       terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
       terraform plan -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -out=tfplan
+      "
     profiles:
       - plan
     networks:
@@ -69,7 +71,7 @@ services:
   # Terraform Apply Service
   # =============================================================================
   terraform-apply:
-    image: hashicorp/terraform:1.6.0
+    image: hashicorp/terraform:1.13
     container_name: code-quest-terraform-apply
     working_dir: /workspace
     volumes:
@@ -81,38 +83,25 @@ services:
       - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
       - TF_VAR_owner=${OWNER:-devops-team}
       - AWS_PROFILE=${AWS_PROFILE:-default}
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/bin/sh"]
     command: |
-      echo '🚀 Applying Terraform infrastructure changes...' &&
+      -c "
       echo 'Environment: ${ENVIRONMENT:-dev}' &&
       echo 'Region: ${AWS_REGION:-us-west-2}' &&
       echo '' &&
-      cd terraform &&
       terraform init &&
       terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
-      terraform apply -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -auto-approve &&
-      echo '' &&
-      echo '✅ Infrastructure deployed successfully!' &&
-      echo '' &&
-      echo '📊 Infrastructure Summary:' &&
-      terraform output -json | jq -r '
-        "Cluster ID: " + .cluster_id.value,
-        "Cluster Endpoint: " + .cluster_endpoint.value,
-        "VPC ID: " + .vpc_id.value,
-        "Database Endpoint: " + .rds_endpoint.value,
-        "Application URL: " + .application_url.value,
-        "Kubectl Command: " + .kubectl_config.value
-      ' 2>/dev/null || echo 'Run "terraform output" to see all outputs'
+      terraform apply -var-file='environments/${ENVIRONMENT:-dev}.tfvars'  -auto-approve
+      "
     profiles:
       - apply
     networks:
       - infrastructure
-
   # =============================================================================
   # Terraform Destroy Service
   # =============================================================================
   terraform-destroy:
-    image: hashicorp/terraform:1.6.0
+    image: hashicorp/terraform:1.13
     container_name: code-quest-terraform-destroy
     working_dir: /workspace
     volumes:

@@ -178,8 +178,8 @@ jobs:
 
     - name: Wait for deployment
       run: |
-        kubectl rollout status deployment/frontend -n code-quest-dev --timeout=300s || echo "Frontend deployment not found"
-        kubectl rollout status deployment/backend -n code-quest-dev --timeout=300s || echo "Backend deployment not found"
+        kubectl rollout status deployment/frontend -n code-quest --timeout=300s || echo "Frontend deployment not found"
+        kubectl rollout status deployment/backend -n code-quest --timeout=300s || echo "Backend deployment not found"
 
     - name: Get deployment status
       run: |

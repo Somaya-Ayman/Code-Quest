@@ -168,6 +168,7 @@ module "rds" {
 
   engine            = "postgres"
   engine_version    = var.postgres_version
+  family            = "postgres${split(".", var.postgres_version)[0]}"
   instance_class    = var.rds_instance_class
   allocated_storage = var.rds_allocated_storage
   storage_encrypted = true
@@ -184,8 +185,8 @@ module "rds" {
   backup_window          = "03:00-04:00"
   maintenance_window     = "sun:04:00-sun:05:00"
 
-  deletion_protection = var.enable_deletion_protection
-  skip_final_snapshot = var.enable_deletion_protection ? false : true
+  deletion_protection = false
+  skip_final_snapshot = true
 
   performance_insights_enabled = true
   monitoring_interval         = 60
@@ -360,14 +361,12 @@ resource "aws_s3_bucket_versioning" "app_data" {
   }
 }
 
-resource "aws_s3_bucket_encryption" "app_data" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "app_data" {
   bucket = aws_s3_bucket.app_data.id
 
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
   }
 }

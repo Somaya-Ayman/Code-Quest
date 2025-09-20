@@ -29,6 +29,12 @@ variable "owner" {
   default     = "devops-team"
 }
 
+variable "aws_profile" {
+  description = "AWS profile to use"
+  type        = string
+  default     = "default"
+}
+
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
