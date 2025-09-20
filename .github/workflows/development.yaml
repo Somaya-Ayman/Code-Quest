@@ -105,8 +105,8 @@ jobs:
     - name: Set repository name for Docker
       id: repo-name
       run: |
-        # Convert to lowercase for Docker Hub
-        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        # Use your actual Docker Hub username
+        REPO_NAME="somaya189ayman/code-quest"
         echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
         echo "Repository name: $REPO_NAME"
 
