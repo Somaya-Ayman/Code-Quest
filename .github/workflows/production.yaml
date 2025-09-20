@@ -3,11 +3,6 @@ name: Production Application CI/CD
 on:
   push:
     branches: [ main ]
-    paths: 
-      - 'frontend/**'
-      - 'backend/**'
-      - 'package.json'
-      - 'docker-compose.yml'
   workflow_dispatch:
     inputs:
       action:

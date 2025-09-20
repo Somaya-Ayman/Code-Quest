@@ -3,18 +3,8 @@ name: Development Application CI/CD
 on:
   push:
     branches: [ develop ]
-    paths: 
-      - 'frontend/**'
-      - 'backend/**'
-      - 'package.json'
-      - 'docker-compose.yml'
   pull_request:
     branches: [ develop ]
-    paths: 
-      - 'frontend/**'
-      - 'backend/**'
-      - 'package.json'
-      - 'docker-compose.yml'
   workflow_dispatch:
     inputs:
       action:
