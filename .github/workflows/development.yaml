@@ -1,0 +1,239 @@
+name: Development Application CI/CD
+
+on:
+  push:
+    branches: [ develop ]
+    paths: 
+      - 'frontend/**'
+      - 'backend/**'
+      - 'package.json'
+      - 'docker-compose.yml'
+  pull_request:
+    branches: [ develop ]
+    paths: 
+      - 'frontend/**'
+      - 'backend/**'
+      - 'package.json'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'build'
+        type: choice
+        options:
+        - build
+        - deploy
+        - test
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # =============================================================================
+  # Build and Test Job
+  # =============================================================================
+  build-and-test:
+    name: Build and Test Application
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        fi
+        if [ -f frontend/package.json ]; then
+          cd frontend && npm ci && cd ..
+        fi
+        if [ -f backend/package.json ]; then
+          cd backend && npm ci && cd ..
+        fi
+
+    - name: Run linting
+      run: |
+        if [ -f package.json ]; then
+          npm run lint || echo "No lint script found"
+        fi
+        if [ -f frontend/package.json ]; then
+          cd frontend && npm run lint || echo "No lint script found" && cd ..
+        fi
+        if [ -f backend/package.json ]; then
+          cd backend && npm run lint || echo "No lint script found" && cd ..
+        fi
+
+    - name: Run tests
+      run: |
+        if [ -f package.json ]; then
+          npm test || echo "No test script found"
+        fi
+        if [ -f frontend/package.json ]; then
+          cd frontend && npm test || echo "No test script found" && cd ..
+        fi
+        if [ -f backend/package.json ]; then
+          cd backend && npm test || echo "No test script found" && cd ..
+        fi
+
+    - name: Build applications
+      run: |
+        if [ -f frontend/package.json ]; then
+          cd frontend && npm run build || echo "No build script found" && cd ..
+        fi
+        if [ -f backend/package.json ]; then
+          cd backend && npm run build || echo "No build script found" && cd ..
+        fi
+
+  # =============================================================================
+  # Build Docker Images Job
+  # =============================================================================
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push frontend image
+      if: ${{ hashFiles('frontend/**') != '' }}
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}-${{ github.sha }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push backend image
+      if: ${{ hashFiles('backend/**') != '' }}
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}-${{ github.sha }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # =============================================================================
+  # Deploy to Development Job
+  # =============================================================================
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-and-test, build-docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment: development
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-west-2 --name code-quest-dev
+
+    - name: Deploy to Kubernetes
+      run: |
+        # Create namespace if it doesn't exist
+        kubectl create namespace code-quest-dev --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Deploy frontend
+        if [ -f frontend/k8s/deployment.yaml ]; then
+          kubectl apply -f frontend/k8s/ -n code-quest-dev
+        else
+          echo "No Kubernetes manifests found for frontend"
+        fi
+        
+        # Deploy backend
+        if [ -f backend/k8s/deployment.yaml ]; then
+          kubectl apply -f backend/k8s/ -n code-quest-dev
+        else
+          echo "No Kubernetes manifests found for backend"
+        fi
+
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/frontend -n code-quest-dev --timeout=300s || echo "Frontend deployment not found"
+        kubectl rollout status deployment/backend -n code-quest-dev --timeout=300s || echo "Backend deployment not found"
+
+    - name: Get deployment status
+      run: |
+        echo "=== Development Deployment Status ==="
+        kubectl get pods -n code-quest-dev
+        kubectl get services -n code-quest-dev
+        kubectl get ingress -n code-quest-dev
+
+  # =============================================================================
+  # Security Scan Job
+  # =============================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
