@@ -40,7 +40,6 @@ jobs:
         cache: 'npm'
         cache-dependency-path: |
           package-lock.json
-          frontend/package-lock.json
           backend/package-lock.json
 
     - name: Install dependencies

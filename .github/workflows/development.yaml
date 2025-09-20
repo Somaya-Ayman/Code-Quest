@@ -42,7 +42,6 @@ jobs:
         cache: 'npm'
         cache-dependency-path: |
           package-lock.json
-          frontend/package-lock.json
           backend/package-lock.json
 
     - name: Install dependencies
@@ -50,45 +49,37 @@ jobs:
         if [ -f package.json ]; then
           npm install
         fi
-        if [ -f frontend/package.json ]; then
-          cd frontend && npm install && cd ..
-        fi
         if [ -f backend/package.json ]; then
           cd backend && npm install && cd ..
         fi
+        echo "Frontend is static HTML - no npm dependencies needed"
 
     - name: Run linting
       run: |
         if [ -f package.json ]; then
           npm run lint || echo "No lint script found"
         fi
-        if [ -f frontend/package.json ]; then
-          cd frontend && npm run lint || echo "No lint script found" && cd ..
-        fi
         if [ -f backend/package.json ]; then
           cd backend && npm run lint || echo "No lint script found" && cd ..
         fi
+        echo "Frontend is static HTML - no linting needed"
 
     - name: Run tests
       run: |
         if [ -f package.json ]; then
           npm test || echo "No test script found"
         fi
-        if [ -f frontend/package.json ]; then
-          cd frontend && npm test || echo "No test script found" && cd ..
-        fi
         if [ -f backend/package.json ]; then
           cd backend && npm test || echo "No test script found" && cd ..
         fi
+        echo "Frontend is static HTML - no tests needed"
 
     - name: Build applications
       run: |
-        if [ -f frontend/package.json ]; then
-          cd frontend && npm run build || echo "No build script found" && cd ..
-        fi
         if [ -f backend/package.json ]; then
           cd backend && npm run build || echo "No build script found" && cd ..
         fi
+        echo "Frontend is static HTML - no build needed"
 
   # =============================================================================
   # Build Docker Images Job
