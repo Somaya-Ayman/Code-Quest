@@ -5,12 +5,14 @@ A comprehensive DevOps project demonstrating modern cloud-native application dep
 ## 📋 Project Overview
 
 **Code Quest** is a 3-tier web application built with modern DevOps practices, featuring:
-- **Frontend**: Static HTML served by NGINX
+- **Frontend**: Static HTML served by Python HTTP server
 - **Backend**: Node.js Express API with PostgreSQL
 - **Infrastructure**: AWS EKS cluster with Terraform
+- **Database**: PostgreSQL running as a pod in Kubernetes
 - **CI/CD**: GitHub Actions with security scanning
 - **Security**: Pod Security Admission, RBAC, and network policies
 - **Monitoring**: HPA, health checks, and resource management
+- **External Access**: AWS Load Balancers for public access
 
 ## 🏗️ Architecture
 
@@ -19,17 +21,23 @@ A comprehensive DevOps project demonstrating modern cloud-native application dep
 │                    AWS Cloud                            │
 ├─────────────────────────────────────────────────────────┤
 │  EKS Cluster (code-quest)                              │
-│  ├── Frontend (NGINX) - Port 80                        │
+│  ├── Frontend (Python HTTP) - Port 8080                │
 │  ├── Backend (Node.js) - Port 3000                     │
-│  └── Database (PostgreSQL) - Port 5432                 │
+│  └── Database (PostgreSQL Pod) - Port 5432             │
 ├─────────────────────────────────────────────────────────┤
 │  Supporting Services                                    │
-│  ├── RDS PostgreSQL                                    │
 │  ├── S3 Bucket (App Data)                              │
-│  ├── ALB (Load Balancer)                               │
+│  ├── ALB (Load Balancer) - External Access             │
 │  └── VPC with Public/Private Subnets                   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### **Features Available:**
+- ✅ **Add Tasks**: Type a task and click "Add Task"
+- ✅ **Delete Tasks**: Click the "Delete" button next to any task
+- ✅ **Real-time Updates**: Changes are reflected immediately
+- ✅ **Health Check**: Visit `/health` endpoint for API status
+- ✅ **Responsive Design**: Works on desktop and mobile
 
 ## 🚀 Quick Start
 
@@ -286,7 +294,7 @@ Code-Quest/
 │   └── infrastructure.yml      # Infrastructure pipeline
 ├── infrastructure/             # Terraform IaC
 │   ├── terraform/             # Terraform configurations
-│   │   ├── main.tf            # Main infrastructure
+│   │   ├── main.tf            # Main infrastructure (no RDS)
 │   │   ├── variables.tf       # Input variables
 │   │   ├── output.tf          # Output values
 │   │   └── environments/      # Environment-specific configs
@@ -295,7 +303,10 @@ Code-Quest/
 │   ├── namespace.yaml         # Namespace with PSA
 │   ├── frontend-deployment.yaml
 │   ├── backend-deployment.yaml
+│   ├── postgres-deployment.yaml # PostgreSQL pod
 │   ├── services.yaml          # ClusterIP services
+│   ├── frontend-loadbalancer.yaml # External access
+│   ├── backend-loadbalancer.yaml  # External access
 │   ├── hpa.yaml              # Horizontal Pod Autoscaler
 │   └── ingress.yaml          # ALB ingress
 ├── frontend/                  # Frontend application
@@ -306,6 +317,7 @@ Code-Quest/
 │   ├── package.json
 │   └── index.js
 ├── docker-compose.yml         # Local development
+├── PRESENTATION_SCRIPT.md     # Video presentation guide
 └── README.md                  # This file
 ```
 
@@ -331,8 +343,19 @@ Code-Quest/
    - Check pod logs: `kubectl logs -l app=backend -n code-quest`
    - Verify image tags: `kubectl describe pod <pod-name> -n code-quest`
    - Check resource limits and requests
+   - Verify PostgreSQL pod is running: `kubectl get pods -l app=postgres -n code-quest`
 
-5. **Terraform Issues**
+5. **Database Connection Issues**
+   - Check PostgreSQL pod status: `kubectl get pods -l app=postgres -n code-quest`
+   - Verify database service: `kubectl get svc postgres-service -n code-quest`
+   - Check backend logs for connection errors: `kubectl logs -l app=backend -n code-quest`
+
+6. **External Access Issues**
+   - Check LoadBalancer services: `kubectl get svc -n code-quest`
+   - Verify external IPs are assigned
+   - Test connectivity: `curl http://[EXTERNAL-IP]/`
+
+7. **Terraform Issues**
    - Verify AWS credentials: `aws sts get-caller-identity`
    - Check Terraform state: `terraform state list`
    - Validate configuration: `terraform validate`
@@ -355,15 +378,39 @@ kubectl logs -l app=frontend -n code-quest
 kubectl logs -l app=backend -n code-quest
 ```
 
+## 📊 Current Deployment Status
+
+### **✅ Fully Deployed and Running**
+- **Frontend**: Python HTTP server with external LoadBalancer access
+- **Backend**: Node.js API with external LoadBalancer access  
+- **Database**: PostgreSQL pod running in Kubernetes cluster
+- **Security**: Pod Security Admission (PSA) compliant
+- **Scaling**: Horizontal Pod Autoscaler configured
+- **Monitoring**: Health checks and resource limits active
+
+### **💰 Cost Optimization**
+- **PostgreSQL Pod**: $0/month (vs RDS ~$15-30/month)
+- **EKS Cluster**: ~$73/month (control plane)
+- **EC2 Nodes**: ~$60/month (2x t3.medium instances)
+- **Load Balancer**: ~$18/month (ALB)
+- **Total**: ~$151/month (saved ~$15-30/month with pod database)
+
+### **🔗 External Access**
+- **Frontend URL**: Live and accessible worldwide
+- **Backend API**: Live and accessible worldwide
+- **Health Monitoring**: Real-time status checks
+- **Auto-scaling**: Responds to traffic automatically
+
 ## 📝 Notes
 
-- The application uses PostgreSQL for data persistence
+- The application uses PostgreSQL pod for data persistence (no RDS)
 - Health checks are implemented for container orchestration
 - CORS is enabled for cross-origin requests
 - All API responses include proper error handling
 - Database schema is automatically created on startup
-- Infrastructure is fully managed with Terraform
+- Infrastructure is fully managed with Terraform (no RDS resources)
 - Security is enforced at multiple levels (PSA, RBAC, NetworkPolicies)
+- External access is provided via AWS Load Balancers
 
 ## 🤝 Contributing
 
@@ -377,12 +424,30 @@ kubectl logs -l app=backend -n code-quest
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## 🎬 Video Presentation
+
+A comprehensive presentation script is available in `PRESENTATION_SCRIPT.md` that includes:
+- **19 slides** covering all project aspects
+- **Live demo commands** for infrastructure and application deployment
+- **Technical deep-dives** into architecture and security
+- **Video recording tips** and best practices
+- **15-20 minute duration** perfect for technical interviews
+
+### **Key Presentation Highlights:**
+- ✅ **Live Application Demo** with external URLs
+- ✅ **Infrastructure as Code** with Terraform
+- ✅ **Kubernetes Deployment** with security best practices
+- ✅ **CI/CD Pipeline** demonstration
+- ✅ **Cost Optimization** showcase
+- ✅ **Security Compliance** walkthrough
+
 ## 🆘 Support
 
 For support and questions:
 - Create an issue in the repository
 - Check the troubleshooting section
 - Review the documentation
+- Use the presentation script for demos
 
 ---
 

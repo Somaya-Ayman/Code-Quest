@@ -104,57 +104,10 @@ variable "enable_taints" {
 }
 
 # =============================================================================
-# RDS Configuration
+# Database Configuration (PostgreSQL Pod)
 # =============================================================================
-
-variable "postgres_version" {
-  description = "PostgreSQL version for RDS"
-  type        = string
-  default     = "15.4"
-}
-
-variable "rds_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t3.micro"
-}
-
-variable "rds_allocated_storage" {
-  description = "RDS allocated storage in GB"
-  type        = number
-  default     = 20
-}
-
-variable "database_name" {
-  description = "Name of the database"
-  type        = string
-  default     = "todoapp"
-}
-
-variable "database_username" {
-  description = "Username for the database"
-  type        = string
-  default     = "todoapp"
-}
-
-variable "database_password" {
-  description = "Password for the database"
-  type        = string
-  sensitive   = true
-  default     = "ChangeMe123!"
-}
-
-variable "backup_retention_period" {
-  description = "RDS backup retention period in days"
-  type        = number
-  default     = 7
-}
-
-variable "enable_deletion_protection" {
-  description = "Enable deletion protection for RDS"
-  type        = bool
-  default     = false
-}
+# Database is now deployed as a pod in Kubernetes
+# See k8s/postgres-deployment.yaml for configuration
 
 # =============================================================================
 # Monitoring Configuration

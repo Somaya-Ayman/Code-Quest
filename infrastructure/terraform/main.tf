@@ -156,71 +156,6 @@ module "eks" {
   tags = local.tags
 }
 
-# =============================================================================
-# RDS PostgreSQL Database
-# =============================================================================
-
-module "rds" {
-  source = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
-
-  identifier = "${local.name}-postgres"
-
-  engine            = "postgres"
-  engine_version    = var.postgres_version
-  family            = "postgres${split(".", var.postgres_version)[0]}"
-  instance_class    = var.rds_instance_class
-  allocated_storage = var.rds_allocated_storage
-  storage_encrypted = true
-
-  db_name  = var.database_name
-  username = var.database_username
-  password = var.database_password
-  port     = "5432"
-
-  vpc_security_group_ids = [aws_security_group.rds.id]
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-
-  backup_retention_period = var.backup_retention_period
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "sun:04:00-sun:05:00"
-
-  deletion_protection = false
-  skip_final_snapshot = true
-
-  performance_insights_enabled = true
-  monitoring_interval         = 60
-  monitoring_role_arn         = aws_iam_role.rds_enhanced_monitoring.arn
-
-  tags = local.tags
-}
-
-# =============================================================================
-# Security Groups
-# =============================================================================
-
-resource "aws_security_group" "rds" {
-  name_prefix = "${local.name}-rds-"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = [local.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.tags, {
-    Name = "${local.name}-rds-sg"
-  })
-}
 
 # =============================================================================
 # IAM Roles and Policies
@@ -260,43 +195,9 @@ resource "aws_kms_key" "eks" {
   tags = local.tags
 }
 
-# RDS Enhanced Monitoring Role
-resource "aws_iam_role" "rds_enhanced_monitoring" {
-  name = "${local.name}-rds-monitoring-role"
+# RDS Enhanced Monitoring Role removed - using PostgreSQL pod in Kubernetes
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "monitoring.rds.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = local.tags
-}
-
-resource "aws_iam_role_policy_attachment" "rds_enhanced_monitoring" {
-  role       = aws_iam_role.rds_enhanced_monitoring.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
-}
-
-# =============================================================================
-# RDS Subnet Group
-# =============================================================================
-
-resource "aws_db_subnet_group" "main" {
-  name       = "${local.name}-db-subnet-group"
-  subnet_ids = module.vpc.private_subnets
-
-  tags = merge(local.tags, {
-    Name = "${local.name}-db-subnet-group"
-  })
-}
+# RDS Subnet Group removed - using PostgreSQL pod in Kubernetes
 
 # =============================================================================
 # Application Load Balancer (for Ingress)

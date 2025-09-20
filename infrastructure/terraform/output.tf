@@ -71,31 +71,7 @@ output "intra_subnets" {
   value       = module.vpc.intra_subnets
 }
 
-# =============================================================================
-# RDS Outputs
-# =============================================================================
 
-output "rds_endpoint" {
-  description = "RDS instance endpoint"
-  value       = module.rds.db_instance_endpoint
-  sensitive   = true
-}
-
-output "rds_port" {
-  description = "RDS instance port"
-  value       = module.rds.db_instance_port
-}
-
-output "rds_database_name" {
-  description = "RDS database name"
-  value       = module.rds.db_instance_name
-}
-
-output "rds_username" {
-  description = "RDS instance root username"
-  value       = module.rds.db_instance_username
-  sensitive   = true
-}
 
 # =============================================================================
 # Load Balancer Outputs
@@ -193,7 +169,7 @@ output "environment_summary" {
     region            = var.aws_region
     cluster_name      = module.eks.cluster_id
     vpc_id           = module.vpc.vpc_id
-    database_endpoint = module.rds.db_instance_endpoint
+    database_endpoint = "postgres-service.code-quest.svc.cluster.local:5432"
     application_url   = "http://${aws_lb.main.dns_name}"
     kubectl_command   = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_id}"
   }
@@ -208,9 +184,9 @@ output "estimated_monthly_cost" {
   value = {
     eks_cluster = "~$73/month (EKS control plane)"
     ec2_nodes   = "~$${var.node_group_desired_size * 30}/month (t3.medium instances)"
-    rds_database = "~$15-30/month (db.t3.micro/small)"
+    database_pod = "~$0/month (PostgreSQL pod in cluster)"
     load_balancer = "~$18/month (ALB)"
     nat_gateway   = "~$45/month (if single NAT gateway)"
-    total_estimate = "~$${73 + (var.node_group_desired_size * 30) + 25 + 18 + 45}/month"
+    total_estimate = "~$${73 + (var.node_group_desired_size * 30) + 18 + 45}/month"
   }
 }
