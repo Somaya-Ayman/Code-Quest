@@ -155,23 +155,23 @@ jobs:
 
     - name: Update kubeconfig
       run: |
-        aws eks update-kubeconfig --region us-west-2 --name code-quest-dev
+        aws eks update-kubeconfig --region us-west-2 --name code-quest
 
     - name: Deploy to Kubernetes
       run: |
         # Create namespace if it doesn't exist
-        kubectl create namespace code-quest-dev --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create namespace code-quest --dry-run=client -o yaml | kubectl apply -f -
         
         # Deploy frontend
         if [ -f frontend/k8s/deployment.yaml ]; then
-          kubectl apply -f frontend/k8s/ -n code-quest-dev
+          kubectl apply -f frontend/k8s/ -n code-quest
         else
           echo "No Kubernetes manifests found for frontend"
         fi
         
         # Deploy backend
         if [ -f backend/k8s/deployment.yaml ]; then
-          kubectl apply -f backend/k8s/ -n code-quest-dev
+          kubectl apply -f backend/k8s/ -n code-quest
         else
           echo "No Kubernetes manifests found for backend"
         fi
@@ -184,9 +184,9 @@ jobs:
     - name: Get deployment status
       run: |
         echo "=== Development Deployment Status ==="
-        kubectl get pods -n code-quest-dev
-        kubectl get services -n code-quest-dev
-        kubectl get ingress -n code-quest-dev
+        kubectl get pods -n code-quest
+        kubectl get services -n code-quest
+        kubectl get ingress -n code-quest
 
   # =============================================================================
   # Security Scan Job
