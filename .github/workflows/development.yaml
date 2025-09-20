@@ -102,12 +102,16 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set lowercase repository name
+    - name: Set repository name for Docker
       id: repo-name
       run: |
-        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        # Use the actual repository name for GHCR permissions
+        # GitHub Actions can only push to packages under the repository name
+        REPO_NAME="${{ github.repository }}"
         echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
         echo "Repository name: $REPO_NAME"
+        echo "GitHub actor: ${{ github.actor }}"
+        echo "Repository owner: ${{ github.repository_owner }}"
 
     - name: Extract metadata
       id: meta
