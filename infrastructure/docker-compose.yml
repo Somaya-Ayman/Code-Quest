@@ -51,9 +51,8 @@ services:
       - TF_VAR_aws_region=${AWS_REGION:-us-west-2}
       - TF_VAR_owner=${OWNER:-devops-team}
       - AWS_PROFILE=${AWS_PROFILE:-default}
-    entrypoint: ["/bin/sh"]
+    entrypoint: ["/bin/sh", "-c"]
     command: |
-      -c "
       echo '📋 Planning Terraform infrastructure changes...' &&
       echo 'Environment: ${ENVIRONMENT:-dev}' &&
       echo 'Region: ${AWS_REGION:-us-west-2}' &&
@@ -61,7 +60,6 @@ services:
       terraform init &&
       terraform workspace select ${ENVIRONMENT:-dev} 2>/dev/null || terraform workspace new ${ENVIRONMENT:-dev} &&
       terraform plan -var-file='environments/${ENVIRONMENT:-dev}.tfvars' -out=tfplan
-      "
     profiles:
       - plan
     networks:
